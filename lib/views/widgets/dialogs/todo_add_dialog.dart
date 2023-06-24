@@ -1,62 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_redux/flutter_redux.dart';
+import 'package:redux/redux.dart';
 
-// 状態を持たないウィジェットを作成するための基底クラス
+import '../../../redux/redux.dart';
+
 class TodoAddDialog extends StatelessWidget {
-  const TodoAddDialog(
-      // keyは、ウィジェットの一意性や再利用性を管理するためのオブジェクト
-      {required this.onAdd,
-      required this.textEditingController,
-      Key? key})
+  const TodoAddDialog({required this.textEditingController, Key? key})
       : super(key: key);
 
-  final ValueChanged<String> onAdd;
   final TextEditingController textEditingController;
 
-  // AlertDialogは、タイトルとコンテンツとアクションを持つダイアログウィジェット
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: const Text('TODO'),
-        // ダイアログの内容
-        // TextFieldは、ユーザーがテキストを入力できるウィジェット
-        content: TextField(
-          // ダイアログが表示されたときにテキストフィールドにフォーカスが移す
-          autofocus: true,
-          controller: textEditingController,
-          // InputDecorationは、ヒントテキストやアイコンなどを設定できるオブジェクト
-          decoration: const InputDecoration(hintText: 'やること'),
-        ),
-        actions: [
-          // TextButtonは、背景色がなくてテキストだけがあるボタンウィジェット
-          TextButton(
-            child: const Text('キャンセル'),
-            onPressed: () {
-              // 現在の画面からダイアログ画面を削除するメソッド
-              Navigator.of(context).pop();
-            },
+  Widget build(BuildContext context) => StoreConnector<AppState, _ViewModel>(
+      converter: (store) => _ViewModel.fromStore(store),
+      builder: (context, viewModel) {
+        return AlertDialog(
+          title: const Text('TODO'),
+          content: TextField(
+            autofocus: true,
+            controller: textEditingController,
+            decoration: const InputDecoration(hintText: '入力しましょう。'),
           ),
-          // ElevatedButtonは、背景色がありてテキストもあるボタンウィジェット
-          ElevatedButton(
-            child: const Text('入力する'),
-            onPressed: () {
-              onAdd(textEditingController.value.text);
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      );
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (viewModel.add(textEditingController.value.text)) {
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('入力する'),
+            )
+          ],
+        );
+      });
 }
 
-Future<T?> showTodoAddDialog<T>(
-        {required BuildContext context, required ValueChanged<String> onAdd}) =>
+Future<T?> showTodoAddDialog<T>({
+  required BuildContext context,
+}) =>
     showDialog<T>(
       context: context,
-      // ダイアログの外側をタップしても閉じれない
       barrierDismissible: false,
-      // ダイアログの内容を作成する
       builder: (context) => TodoAddDialog(
-        // テキストフィールドの値や状態を管理するオブジェクト
-        // 空のTextEditingControllerを作成
         textEditingController: TextEditingController(),
-        onAdd: onAdd,
       ),
     );
+
+class _ViewModel {
+  _ViewModel.fromStore(Store<AppState> store) : _store = store;
+
+  final Store<AppState> _store;
+
+  @override
+  bool operator ==(other) => true;
+
+  bool add(String name) {
+    if (name.isEmpty) {
+      return false;
+    }
+    _store.dispatch(TodoAddAction(name));
+    return true;
+  }
+}
